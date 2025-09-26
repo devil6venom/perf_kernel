@@ -470,7 +470,7 @@ index 360e08762..0cd8f1cce 100644
  	if (type != LAST_NORM)
  		goto exit1;
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 2140f6220..c8c8cc57b 100644
+index 2140f6220..6ce36a322 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -27,10 +27,39 @@
@@ -866,31 +866,11 @@ index 2140f6220..c8c8cc57b 100644
  	namespace_unlock();
  
  	if (rootmnt)
-@@ -3636,3 +3893,37 @@ const struct proc_ns_operations mntns_operations = {
+@@ -3636,3 +3893,17 @@ const struct proc_ns_operations mntns_operations = {
  	.install	= mntns_install,
  	.owner		= mntns_owner,
  };
 +
-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-+extern void susfs_try_umount_all(uid_t uid);
-+void susfs_run_try_umount_for_current_mnt_ns(void) {
-+	struct mount *mnt;
-+	struct mnt_namespace *mnt_ns;
-+
-+	mnt_ns = current->nsproxy->mnt_ns;
-+	// Lock the namespace
-+	namespace_lock();
-+	list_for_each_entry(mnt, &mnt_ns->list, mnt_list) {
-+		// Change the sus mount to be private
-+		if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
-+			change_mnt_propagation(mnt, MS_PRIVATE);
-+		}
-+	}
-+	// Unlock the namespace
-+	namespace_unlock();
-+	susfs_try_umount_all(current_uid().val);
-+}
-+#endif
 +#ifdef CONFIG_KSU_SUSFS
 +bool susfs_is_mnt_devname_ksu(struct path *path) {
 +	struct mount *mnt;
@@ -1838,7 +1818,7 @@ index 0a5345e8c..98cd6d4b8 100644
  }
  
 diff --git a/kernel/sys.c b/kernel/sys.c
-index e7f051e74..36a1816e2 100644
+index a9bbc9d3a..c6f3dbdc2 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
 @@ -1182,12 +1182,18 @@ static int override_release(char __user *release, size_t len)

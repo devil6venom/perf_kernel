@@ -222,7 +222,7 @@ index bcdac3f0..c59be97c 100644
  	return ksu_queue_work(&ksu_save_work);
  }
 diff --git a/kernel/core_hook.c b/kernel/core_hook.c
-index 8c312d55..0422b6e3 100644
+index 8c312d55..8d8b7272 100644
 --- a/kernel/core_hook.c
 +++ b/kernel/core_hook.c
 @@ -22,6 +22,10 @@
@@ -236,7 +236,7 @@ index 8c312d55..0422b6e3 100644
  #include "allowlist.h"
  #include "core_hook.h"
  #include "klog.h" // IWYU pragma: keep
-@@ -35,11 +39,79 @@
+@@ -35,11 +39,76 @@
  
  #define LSM_HANDLER_TYPE int
  
@@ -258,9 +258,6 @@ index 8c312d55..0422b6e3 100644
 +#ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
 +extern bool susfs_is_log_enabled __read_mostly;
 +#endif // #ifdef CONFIG_KSU_SUSFS_ENABLE_LOG
-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-+extern void susfs_run_try_umount_for_current_mnt_ns(void);
-+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +static bool susfs_is_umount_for_zygote_system_process_enabled = false;
 +extern bool susfs_hide_sus_mnts_for_all_procs;
@@ -317,7 +314,7 @@ index 8c312d55..0422b6e3 100644
  extern void ksu_sucompat_init();
  extern void ksu_sucompat_exit();
  
-@@ -240,6 +312,19 @@ static void nuke_ext4_sysfs() {
+@@ -240,6 +309,19 @@ static void nuke_ext4_sysfs() {
  	path_put(&path);
  }
  
@@ -337,7 +334,7 @@ index 8c312d55..0422b6e3 100644
  LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
  		     unsigned long arg4, unsigned long arg5)
  {
-@@ -271,6 +356,74 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
+@@ -271,6 +353,74 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
  	pr_info("option: 0x%x, cmd: %ld\n", option, arg2);
  #endif
  
@@ -412,7 +409,7 @@ index 8c312d55..0422b6e3 100644
  	if (arg2 == CMD_BECOME_MANAGER) {
  		if (from_manager) {
  			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
-@@ -313,6 +466,9 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
+@@ -313,6 +463,9 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
  		switch (arg3) {
  		case EVENT_POST_FS_DATA: {
  			static bool post_fs_data_lock = false;
@@ -422,7 +419,7 @@ index 8c312d55..0422b6e3 100644
  			if (!post_fs_data_lock) {
  				post_fs_data_lock = true;
  				pr_info("post-fs-data triggered\n");
-@@ -416,6 +572,314 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
+@@ -416,6 +569,309 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
  		return 0;
  	}
  
@@ -591,11 +588,6 @@ index 8c312d55..0422b6e3 100644
 +				pr_info("susfs: copy_to_user() failed\n");
 +			return 0;
 +		}
-+		if (arg2 == CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS) {
-+			int error = 0;
-+			susfs_run_try_umount_for_current_mnt_ns();
-+			pr_info("susfs: CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS -> ret: %d\n", error);
-+		}
 +#endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +		if (arg2 == CMD_SUSFS_SET_UNAME) {
@@ -737,7 +729,7 @@ index 8c312d55..0422b6e3 100644
  	// all other cmds are for 'root manager'
  	if (!from_manager) {
  		return 0;
-@@ -506,6 +970,11 @@ static bool is_non_appuid(kuid_t uid)
+@@ -506,6 +962,11 @@ static bool is_non_appuid(kuid_t uid)
  	return appid < FIRST_APPLICATION_UID;
  }
  
@@ -749,7 +741,7 @@ index 8c312d55..0422b6e3 100644
  static bool should_umount(struct path *path)
  {
  	if (!path) {
-@@ -518,11 +987,15 @@ static bool should_umount(struct path *path)
+@@ -518,11 +979,15 @@ static bool should_umount(struct path *path)
  		return false;
  	}
  
@@ -765,7 +757,7 @@ index 8c312d55..0422b6e3 100644
  }
  
  static void ksu_umount_mnt(struct path *path, int flags)
-@@ -533,7 +1006,11 @@ static void ksu_umount_mnt(struct path *path, int flags)
+@@ -533,7 +998,11 @@ static void ksu_umount_mnt(struct path *path, int flags)
  	}
  }
  
@@ -777,7 +769,7 @@ index 8c312d55..0422b6e3 100644
  {
  	struct path path;
  	int err = kern_path(mnt, 0, &path);
-@@ -553,9 +1030,41 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
+@@ -553,9 +1022,41 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
  		return;
  	}
  
@@ -819,7 +811,7 @@ index 8c312d55..0422b6e3 100644
  LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  {
  	// this hook is used for umounting overlayfs for some uid, if there isn't any module mounted, just ignore it!
-@@ -575,6 +1084,18 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -575,6 +1076,18 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  		return 0;
  	}
  
@@ -838,7 +830,7 @@ index 8c312d55..0422b6e3 100644
  	if (is_non_appuid(new_uid)) {
  #ifdef CONFIG_KSU_DEBUG
  		pr_info("handle setuid ignore non application uid: %d\n", new_uid.val);
-@@ -587,6 +1108,12 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -587,6 +1100,12 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  #ifdef CONFIG_KSU_DEBUG
  		pr_info("handle umount for unsupported application uid: %d\n", new_uid.val);
  #endif
@@ -851,7 +843,7 @@ index 8c312d55..0422b6e3 100644
  		goto do_umount;
  	}
  
-@@ -596,7 +1123,6 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -596,7 +1115,6 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  #endif
  		return 0;
  	}
@@ -859,7 +851,7 @@ index 8c312d55..0422b6e3 100644
  	if (!ksu_uid_should_umount(new_uid.val)) {
  		return 0;
  	} else {
-@@ -609,7 +1135,11 @@ do_umount:
+@@ -609,7 +1127,11 @@ do_umount:
  	// check old process's selinux context, if it is not zygote, ignore it!
  	// because some su apps may setuid to untrusted_app but they are in global mount namespace
  	// when we umount for such process, that is a disaster!
@@ -871,7 +863,7 @@ index 8c312d55..0422b6e3 100644
  		pr_info("handle umount ignore non zygote child: %d\n",
  			current->pid);
  		return 0;
-@@ -620,6 +1150,16 @@ do_umount:
+@@ -620,6 +1142,16 @@ do_umount:
  		current->pid);
  #endif
  
@@ -888,7 +880,7 @@ index 8c312d55..0422b6e3 100644
  	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
  	// filter the mountpoint whose target is `/data/adb`
  	try_umount("/odm", true, 0);
-@@ -631,6 +1171,16 @@ do_umount:
+@@ -631,6 +1163,16 @@ do_umount:
  
  	// try umount ksu temp path
  	try_umount("/debug_ramdisk", false, MNT_DETACH);
