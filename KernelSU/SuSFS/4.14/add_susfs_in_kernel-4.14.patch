@@ -995,7 +995,7 @@ index 96fc70225..7c5583125 100644
  	show_fd_locks(m, file, files);
  	if (seq_has_overflowed(m))
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index 7294cfeb1..7e0bc6846 100644
+index 7294cfeb1..ed8d3088a 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -20,6 +20,9 @@
@@ -1008,29 +1008,32 @@ index 7294cfeb1..7e0bc6846 100644
  #include <linux/mm_inline.h>
  
  #include <asm/elf.h>
-@@ -350,6 +353,17 @@ static void show_vma_header_prefix(struct seq_file *m,
+@@ -350,6 +353,19 @@ static void show_vma_header_prefix(struct seq_file *m,
  		   MAJOR(dev), MINOR(dev), ino);
  }
  
-+#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-+extern void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino);
-+#endif
-+
++#ifdef CONFIG_MAP_SPOOF
 +struct string_entry {
 +    char *string;
 +    struct list_head list;
 +};
-+extern struct list_head string_list; // this is on ksu's core_hook.c
++extern struct list_head string_list;
 +extern atomic_t skip_rwxp;
++#endif
++
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++extern void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino);
++#endif
 +
  static void
  show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
  {
-@@ -362,11 +376,49 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
+@@ -362,11 +378,51 @@ show_map_vma(struct seq_file *m, struct vm_area_struct *vma, int is_pid)
  	dev_t dev = 0;
  	const char *name = NULL;
  
-+struct string_entry *entry, *tmp;
++#ifdef CONFIG_MAP_SPOOF	// spoof rwxp
++	struct string_entry *entry, *tmp;
 +
 +	// skip rwxp and two entries after it
 +	if (atomic_read(&skip_rwxp)) {
@@ -1048,6 +1051,7 @@ index 7294cfeb1..7e0bc6846 100644
 +			return;
 +		}
 +	}
++#endif
 +
  	if (file) {
  		struct inode *inode = file_inode(vma->vm_file);
@@ -1063,9 +1067,8 @@ index 7294cfeb1..7e0bc6846 100644
 +bypass_orig_flow:
 +#endif
  		pgoff = ((loff_t)vma->vm_pgoff) << PAGE_SHIFT;
-+
-+if (file->f_path.dentry) {
-+            smp_mb();
++#ifdef CONFIG_MAP_SPOOF	// spoof file entries
++		if (file->f_path.dentry) {
 +			list_for_each_entry_safe(entry, tmp, &string_list, list) {
 +				if (strstr(file->f_path.dentry->d_name.name, entry->string)) {
 +					seq_printf(m, "%08lx-%08lx ---- 00000000 00:00 0  \n",vma->vm_start, vma->vm_end);
@@ -1073,6 +1076,7 @@ index 7294cfeb1..7e0bc6846 100644
 +				}
 +			}
 +		}
++#endif
  	}
  
  	start = vma->vm_start;
@@ -1768,8 +1772,35 @@ index 0a5345e8c..98cd6d4b8 100644
  	return 0;
  }
  
+diff --git a/kernel/reboot.c b/kernel/reboot.c
+index 2946ed1d9..353572ee7 100644
+--- a/kernel/reboot.c
++++ b/kernel/reboot.c
+@@ -277,6 +277,11 @@ static DEFINE_MUTEX(reboot_mutex);
+  *
+  * reboot doesn't sync: do that yourself before calling this.
+  */
++
++#ifdef CONFIG_MAP_SPOOF
++extern int lkm_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg);
++#endif
++
+ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
+ 		void __user *, arg)
+ {
+@@ -284,6 +289,10 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
+ 	char buffer[256];
+ 	int ret = 0;
+ 
++#ifdef CONFIG_MAP_SPOOF
++	lkm_handle_sys_reboot(magic1, magic2, cmd, &arg);
++#endif
++
+ 	/* We only trust the superuser with rebooting the system. */
+ 	if (!ns_capable(pid_ns->user_ns, CAP_SYS_BOOT))
+ 		return -EPERM;
 diff --git a/kernel/sys.c b/kernel/sys.c
-index a9bbc9d3a..c6f3dbdc2 100644
+index 9b9201c6c..58a78cba1 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
 @@ -1182,12 +1182,18 @@ static int override_release(char __user *release, size_t len)

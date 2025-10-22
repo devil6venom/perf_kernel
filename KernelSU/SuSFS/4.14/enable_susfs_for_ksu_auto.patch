@@ -96,12 +96,12 @@ index 528bbc21..4b8e0be9 100644
 +
  endmenu
 diff --git a/kernel/Makefile b/kernel/Makefile
-index bcd65c70..c32bf14e 100644
+index cfebc465..ab9a79de 100644
 --- a/kernel/Makefile
 +++ b/kernel/Makefile
-@@ -76,4 +76,81 @@ endif
- ccflags-y += -Wno-implicit-function-declaration -Wno-strict-prototypes -Wno-int-conversion -Wno-gcc-compat
- ccflags-y += -Wno-declaration-after-statement -Wno-unused-function
+@@ -103,4 +103,81 @@ compdb:
+ clean:
+ 	make -C $(KDIR) M=$(MDIR) clean
  
 +## For non-gki compatiblity ##
 +ifeq ($(shell grep -q " current_sid(void)" $(srctree)/security/selinux/include/objsec.h; echo $$?),0)
@@ -222,7 +222,7 @@ index bcdac3f0..c59be97c 100644
  	return ksu_queue_work(&ksu_save_work);
  }
 diff --git a/kernel/core_hook.c b/kernel/core_hook.c
-index 8c312d55..85174dae 100644
+index 3ebf8cfb..587a65cc 100644
 --- a/kernel/core_hook.c
 +++ b/kernel/core_hook.c
 @@ -22,6 +22,10 @@
@@ -284,102 +284,7 @@ index 8c312d55..85174dae 100644
  extern void ksu_sucompat_init();
  extern void ksu_sucompat_exit();
  
-@@ -240,6 +279,19 @@ static void nuke_ext4_sysfs() {
- 	path_put(&path);
- }
- 
-+#define CUSTOM_CMD1 0x11001 // add to list
-+#define CUSTOM_CMD2 0x11002 // destroy list
-+#define CUSTOM_CMD3 0x11003 // skip rwxp enable
-+#define CUSTOM_CMD4 0x11004 // skip rwxp disable
-+
-+struct string_entry {
-+    char *string;
-+    struct list_head list;
-+};
-+LIST_HEAD(string_list);
-+atomic_t skip_rwxp = ATOMIC_INIT(0);
-+EXPORT_SYMBOL(skip_rwxp);
-+
- LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long arg3,
- 		     unsigned long arg4, unsigned long arg5)
- {
-@@ -271,6 +323,74 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
- 	pr_info("option: 0x%x, cmd: %ld\n", option, arg2);
- #endif
- 
-+if (arg2 == CUSTOM_CMD1) {
-+		struct string_entry *new_entry, *entry;
-+		char buf[64];
-+		memzero_explicit(buf, 64);
-+	
-+		if (copy_from_user(buf, (const char __user *)arg3, sizeof(buf) - 1)) {
-+			pr_err("cmd_add_try_umount: failed to copy user string\n");
-+			return 0;
-+		}
-+		buf[64 - 1] = '\0';
-+		
-+		new_entry = kmalloc(sizeof(*new_entry), GFP_KERNEL);
-+		if (!new_entry)
-+			return 0;
-+
-+		new_entry->string = kstrdup(buf, GFP_KERNEL);		
-+		if (!new_entry->string) {
-+			kfree(new_entry);
-+			return 0;
-+		}
-+		
-+		list_for_each_entry(entry, &string_list, list) {
-+			if (!strcmp(entry->string, buf))
-+				return 0;
-+		}	
-+		
-+		pr_info("entry: %s added!\n", buf);
-+		list_add(&new_entry->list, &string_list);
-+		smp_mb();
-+		unsigned long result = 0x54321;
-+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
-+			return 0;
-+	}
-+	
-+	if (arg2 == CUSTOM_CMD2) {
-+		struct string_entry *entry, *tmp;
-+
-+		list_for_each_entry_safe(entry, tmp, &string_list, list) {
-+        		pr_info("entry: %s removed!\n", entry->string);
-+        		list_del(&entry->list);
-+        		kfree(entry->string);
-+        		kfree(entry);
-+        	}
-+        smp_mb();
-+		unsigned long result = 0x54321;
-+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
-+			return 0;
-+	}
-+
-+	if (arg2 == CUSTOM_CMD3) {
-+		
-+		unsigned long result;
-+		atomic_set(&skip_rwxp, 1);
-+		result = 0x1;
-+		
-+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
-+			return 0;
-+	}
-+
-+		if (arg2 == CUSTOM_CMD4) {
-+		
-+		unsigned long result;
-+		atomic_set(&skip_rwxp, 0);
-+		result = 0x0;
-+
-+		if (copy_to_user((void __user *)arg5, &result, sizeof(result)))
-+			return 0;
-+	}
- 	if (arg2 == CMD_BECOME_MANAGER) {
- 		if (from_manager) {
- 			if (copy_to_user(result, &reply_ok, sizeof(reply_ok))) {
-@@ -313,6 +433,9 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
+@@ -325,6 +364,9 @@ skip_check:
  		switch (arg3) {
  		case EVENT_POST_FS_DATA: {
  			static bool post_fs_data_lock = false;
@@ -389,7 +294,7 @@ index 8c312d55..85174dae 100644
  			if (!post_fs_data_lock) {
  				post_fs_data_lock = true;
  				pr_info("post-fs-data triggered\n");
-@@ -416,6 +539,309 @@ LSM_HANDLER_TYPE ksu_handle_prctl(int option, unsigned long arg2, unsigned long
+@@ -428,6 +470,309 @@ skip_check:
  		return 0;
  	}
  
@@ -699,7 +604,7 @@ index 8c312d55..85174dae 100644
  	// all other cmds are for 'root manager'
  	if (!from_manager) {
  		return 0;
-@@ -506,6 +932,11 @@ static bool is_non_appuid(kuid_t uid)
+@@ -518,6 +863,11 @@ static bool is_non_appuid(kuid_t uid)
  	return appid < FIRST_APPLICATION_UID;
  }
  
@@ -711,7 +616,7 @@ index 8c312d55..85174dae 100644
  static bool should_umount(struct path *path)
  {
  	if (!path) {
-@@ -518,11 +949,15 @@ static bool should_umount(struct path *path)
+@@ -530,11 +880,15 @@ static bool should_umount(struct path *path)
  		return false;
  	}
  
@@ -727,7 +632,7 @@ index 8c312d55..85174dae 100644
  }
  
  static void ksu_umount_mnt(struct path *path, int flags)
-@@ -533,7 +968,11 @@ static void ksu_umount_mnt(struct path *path, int flags)
+@@ -545,7 +899,11 @@ static void ksu_umount_mnt(struct path *path, int flags)
  	}
  }
  
@@ -739,7 +644,7 @@ index 8c312d55..85174dae 100644
  {
  	struct path path;
  	int err = kern_path(mnt, 0, &path);
-@@ -553,9 +992,41 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
+@@ -565,9 +923,41 @@ static void try_umount(const char *mnt, bool check_mnt, int flags)
  		return;
  	}
  
@@ -781,7 +686,7 @@ index 8c312d55..85174dae 100644
  LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  {
  	// this hook is used for umounting overlayfs for some uid, if there isn't any module mounted, just ignore it!
-@@ -575,6 +1046,18 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -587,6 +977,18 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  		return 0;
  	}
  
@@ -800,7 +705,7 @@ index 8c312d55..85174dae 100644
  	if (is_non_appuid(new_uid)) {
  #ifdef CONFIG_KSU_DEBUG
  		pr_info("handle setuid ignore non application uid: %d\n", new_uid.val);
-@@ -587,6 +1070,12 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -599,6 +1001,12 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  #ifdef CONFIG_KSU_DEBUG
  		pr_info("handle umount for unsupported application uid: %d\n", new_uid.val);
  #endif
@@ -813,7 +718,7 @@ index 8c312d55..85174dae 100644
  		goto do_umount;
  	}
  
-@@ -596,7 +1085,6 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
+@@ -608,7 +1016,6 @@ LSM_HANDLER_TYPE ksu_handle_setuid(struct cred *new, const struct cred *old)
  #endif
  		return 0;
  	}
@@ -821,7 +726,7 @@ index 8c312d55..85174dae 100644
  	if (!ksu_uid_should_umount(new_uid.val)) {
  		return 0;
  	} else {
-@@ -609,7 +1097,11 @@ do_umount:
+@@ -621,7 +1028,11 @@ do_umount:
  	// check old process's selinux context, if it is not zygote, ignore it!
  	// because some su apps may setuid to untrusted_app but they are in global mount namespace
  	// when we umount for such process, that is a disaster!
@@ -833,7 +738,7 @@ index 8c312d55..85174dae 100644
  		pr_info("handle umount ignore non zygote child: %d\n",
  			current->pid);
  		return 0;
-@@ -620,6 +1112,16 @@ do_umount:
+@@ -632,6 +1043,16 @@ do_umount:
  		current->pid);
  #endif
  
@@ -850,12 +755,13 @@ index 8c312d55..85174dae 100644
  	// fixme: use `collect_mounts` and `iterate_mount` to iterate all mountpoint and
  	// filter the mountpoint whose target is `/data/adb`
  	try_umount("/odm", true, 0);
-@@ -631,6 +1133,16 @@ do_umount:
- 
- 	// try umount ksu temp path
- 	try_umount("/debug_ramdisk", false, MNT_DETACH);
+@@ -640,8 +1061,16 @@ do_umount:
+ 	try_umount("/product", true, 0);
+ 	try_umount("/system_ext", true, 0);
+ 	try_umount("/data/adb/modules", false, MNT_DETACH);
+-
+-	return 0;
 +	try_umount("/sbin", false, MNT_DETACH);
-+
 +
 + 	// try umount hosts file
 +	try_umount("/system/etc/hosts", false, MNT_DETACH);
@@ -864,14 +770,15 @@ index 8c312d55..85174dae 100644
 +	try_umount("/apex/com.android.art/bin/dex2oat64", false, MNT_DETACH);
 +	try_umount("/apex/com.android.art/bin/dex2oat32", false, MNT_DETACH);
 +#endif
- 
- 	return 0;
++return 0;
  }
+ 
+ #ifndef DEVPTS_SUPER_MAGIC
 diff --git a/kernel/kernel_compat.h b/kernel/kernel_compat.h
-index f46399c5..09c99295 100644
+index 17ade229..da080c5f 100644
 --- a/kernel/kernel_compat.h
 +++ b/kernel/kernel_compat.h
-@@ -11,6 +11,7 @@ extern struct key *init_session_keyring;
+@@ -19,6 +19,7 @@ extern struct key *init_session_keyring;
  #endif
  
  extern void ksu_android_ns_fs_check();
@@ -1071,7 +978,7 @@ index 07120c25..91894c8c 100644
  
  #endif
 diff --git a/kernel/sucompat.c b/kernel/sucompat.c
-index afb7904e..47e6ba79 100644
+index 1cc11ac1..ff221a58 100644
 --- a/kernel/sucompat.c
 +++ b/kernel/sucompat.c
 @@ -71,7 +71,7 @@ static int ksu_sucompat_user_common(const char __user **filename_user,
