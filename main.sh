@@ -119,11 +119,11 @@ cd $WORKDIR
 
 # Setup
 msg "Setup"
+git config --global http.postBuffer 524288000
 
 msg "Cloning Clang and Kernel in parallel..."
 # Clang
 (
-    git config --global http.postBuffer 524288000
     git clone --depth=1 $CLANG_SOURCE --single-branch -b $CLANG_BRANCH Clang
 ) &
 CLANG_PID=$!
