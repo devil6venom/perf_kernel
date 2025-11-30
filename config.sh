@@ -51,16 +51,16 @@ if [[ $KSU_ENABLED == "true" ]] && [[ ! -z "$KERNELSU_DIR" ]]; then
     	msg "Importing SuSFS into KSU source..."
 
         cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/add_susfs_in_kernel-$KERNEL_VER.patch $KERNEL_DIR/
-    	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.c $KERNEL_DIR/fs/
-    	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h $KERNEL_DIR/include/linux/
-	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs_def.h $KERNEL_DIR/include/linux/
+  #  	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.c $KERNEL_DIR/fs/
+#    	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h $KERNEL_DIR/include/linux/
+#	cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs_def.h $KERNEL_DIR/include/linux/
     	cd $KERNEL_DIR && patch -p1 -F 3 < add_susfs_in_kernel-$KERNEL_VER.patch
     	msg "Importing SuSFS for $KERNEL_VER kernel..."
     fi
 
     cd $KERNEL_DIR
     echo "CONFIG_KSU=y" >> $DEVICE_DEFCONFIG_FILE
-    echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
+#    echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
 
     if [[ ! -z "$KERNELSU_GITMODULE" ]]; then
         KSU_GIT_VERSION=$(cd KernelSU && git rev-list --count HEAD)
@@ -72,7 +72,7 @@ if [[ $KSU_ENABLED == "true" ]] && [[ ! -z "$KERNELSU_DIR" ]]; then
     SUSFS_VERSION=$(grep "SUSFS_VERSION" $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h | cut -d '"' -f2 )
     msg "KernelSU Version: $KERNELSU_VERSION"
     msg "SuSFS version: $SUSFS_VERSION"
-    sed -i "s/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=\"-$KERNEL_NAME-$KERNEL_BRANCH-xx\"/" $DEVICE_DEFCONFIG_FILE
+    sed -i "s/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=\"-$KERNEL_BRANCH-$KERNEL_NAME-xx\"/" $DEVICE_DEFCONFIG_FILE
 elif
    [[ $KSU_ENABLED == "true" ]]; then
     cd $KERNEL_DIR && curl -LSs "https://raw.githubusercontent.com/$KERNELSU_REPO/main/kernel/setup.sh" | bash -s main
@@ -114,9 +114,9 @@ elif
     msg "Importing SuSFS into KSU source..."
 
     cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/add_susfs_in_kernel-$KERNEL_VER.patch $KERNEL_DIR/
-    cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.c $KERNEL_DIR/fs/
-    cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h $KERNEL_DIR/include/linux/
-    cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs_def.h $KERNEL_DIR/include/linux/
+ #   cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.c $KERNEL_DIR/fs/
+#    cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h $KERNEL_DIR/include/linux/
+#    cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs_def.h $KERNEL_DIR/include/linux/
     cd $KERNEL_DIR && patch -p1 -F 3 < add_susfs_in_kernel-$KERNEL_VER.patch
     msg "Importing SuSFS into $KERNEL_VER kernel..."
 
@@ -125,11 +125,11 @@ elif
         echo "CONFIG_KPROBES=y" >> $DEVICE_DEFCONFIG_FILE
 	echo "CONFIG_HAVE_KPROBES=y" >> $DEVICE_DEFCONFIG_FILE
 	echo "CONFIG_KPROBE_EVENTS=y" >> $DEVICE_DEFCONFIG_FILE
-        echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
+#        echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
         msg "Hook patches not found! Using kprobes..."
     else
     	echo "CONFIG_KSU=y" >> $DEVICE_DEFCONFIG_FILE
-    	echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
+   # 	echo "CONFIG_KSU_SUSFS=y" >> $DEVICE_DEFCONFIG_FILE
     	echo "CONFIG_KPROBES=n" >> $DEVICE_DEFCONFIG_FILE # it will conflict with KSU hooks if it's on
     fi
 
@@ -138,7 +138,7 @@ elif
     SUSFS_VERSION=$(grep "SUSFS_VERSION" $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/susfs.h | cut -d '"' -f2 )
     msg "KernelSU Version: $KERNELSU_VERSION"
     msg "SuSFS version: $SUSFS_VERSION"
-    sed -i "s/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=\"-$KERNEL_NAME-$KERNEL_BRANCH-xx\"/" $DEVICE_DEFCONFIG_FILE
+    sed -i "s/^CONFIG_LOCALVERSION=.*/CONFIG_LOCALVERSION=\"-$KERNEL_BRANCH-$KERNEL_NAME-xx\"/" $DEVICE_DEFCONFIG_FILE
 fi
 if [[ $KSU_ENABLED == "false" ]]; then
     echo "KernelSU Disabled"
