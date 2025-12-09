@@ -90,7 +90,7 @@ elif
 	    cd $WORKDIR/out/manager && wget -q https://nightly.link/tiann/KernelSU/workflows/build-manager/main/ksud-x86_64-unknown-linux-musl.zip
 	    unzip ksud-x86_64-unknown-linux-musl.zip && mv x86_64-unknown-linux-musl/release/* .
 	    mv *.apk manager.apk && chmod +x ksud
-	    MANAGER_SIGNATURE=$(./ksud debug get-sign manager.apk)
+	    MANAGER_SIGNATURE=$(./ksud get-sign manager.apk)
 	    MANAGER_EXPECTED_SIZE=$(echo "$MANAGER_SIGNATURE" | grep 'size:' | sed 's/.*size: //; s/,.*//')
 	    MANAGER_EXPECTED_HASH=$(echo "$MANAGER_SIGNATURE" | grep 'hash:' | sed 's/.*hash: //; s/,.*//')
             msg "Backporting latest KSU manager..."
