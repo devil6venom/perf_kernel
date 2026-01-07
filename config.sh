@@ -106,8 +106,8 @@ elif
     fi
 	
     cp $WORKDIR/patches/KernelSU/Backport/hook_patches_ksu-$KERNEL_VER.patch $KERNEL_DIR/
-    cd $KERNEL_DIR && patch -p1 < hook_patches_ksu-$KERNEL_VER.patch
-    msg "Importing KSU hooks for $KERNEL_VER kernel..."
+#    cd $KERNEL_DIR && patch -p1 < hook_patches_ksu-$KERNEL_VER.patch
+    msg "skipping KSU hooks for $KERNEL_VER kernel..."
 
     cp $WORKDIR/patches/KernelSU/SuSFS/$KERNEL_VER/enable_susfs_for_ksu_auto.patch $KERNEL_DIR/KernelSU/
     cd $KERNEL_DIR/KernelSU && patch -p1 -F 3 < enable_susfs_for_ksu_auto.patch
