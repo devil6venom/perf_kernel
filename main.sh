@@ -6,7 +6,7 @@
 # Kernel
 KERNEL_NAME="LaudeKaSarkaar"
 KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
-KERNEL_BRANCH="14"
+KERNEL_BRANCH="13"
 
 # KernelSU
 KERNELSU_REPO="tiann/KernelSU"
