@@ -4,7 +4,7 @@
 # ------------------------------------------------------------
 
 # Kernel
-KERNEL_NAME="MahaKaal-Ksu"
+KERNEL_NAME="LaudeKaSarkaar"
 KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
 KERNEL_BRANCH="14"
 
