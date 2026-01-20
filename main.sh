@@ -4,13 +4,13 @@
 # ------------------------------------------------------------
 
 # Kernel
-KERNEL_NAME="Perf"
+KERNEL_NAME="Rexxx"
 KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
-KERNEL_BRANCH="14"
+KERNEL_BRANCH="13"
 
 # KernelSU
 KERNELSU_REPO="tiann/KernelSU"
-KSU_ENABLED="false"
+KSU_ENABLED="true"
 
 # Anykernel3
 ANYKERNEL3_GIT="https://github.com/selfmusing/AnyKernel3.git"
