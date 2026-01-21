@@ -4,7 +4,7 @@
 # ------------------------------------------------------------
 
 # Kernel
-KERNEL_NAME="LaudeKaSarkaar"
+KERNEL_NAME="Rexx+Perf"
 KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
 KERNEL_BRANCH="13"
 
