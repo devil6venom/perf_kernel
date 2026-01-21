@@ -5,7 +5,7 @@
 
 # Kernel
 KERNEL_NAME="Rexx+Perf"
-KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
+KERNEL_GIT="https://github.com/Ancient-Project/android_kernel_xiaomi_violet.git"
 KERNEL_BRANCH="13"
 
 # KernelSU
