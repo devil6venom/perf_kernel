@@ -7,13 +7,13 @@ set -o pipefail
 # ------------------------------------------------------------
 
 # Kernel
-KERNEL_NAME="Perf"
+KERNEL_NAME="Perf+"
 KERNEL_GIT="https://github.com/selfmusing/kernel_xiaomi_violet.git"
 KERNEL_BRANCH="14"
 
 # KernelSU
 KERNELSU_REPO="selfmusing/USlenreK"
-KSU_ENABLED="false"
+KSU_ENABLED="true"
 
 # KernelSU Custom Manager
 MANAGER_EXPECTED_SIZE="0x3a6"
